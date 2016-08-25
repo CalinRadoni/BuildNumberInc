@@ -1,7 +1,7 @@
 # BuildNumberInc
 
 <p align="center">
-__BuildNumberInc__ is an application to auto-increment the build number of a C/C++ project
+<b>BuildNumberInc<b> is an application to auto-increment the build number of a C/C++ project
 </p>
 
 ### Usage
@@ -30,7 +30,7 @@ namespace YourNamespace {
 #define SW_VER_MINOR	8
 #define SW_VER_BUILD	28		// build number
 
-} /* namespace */
+} // namespace
 
 #endif // VERSION_H
 ```
