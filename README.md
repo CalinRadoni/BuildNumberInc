@@ -1,8 +1,6 @@
 # BuildNumberInc
 
-<p align="center">
-<b>BuildNumberInc</b> is an application to auto-increment the build number of a C/C++ project
-</p>
+__BuildNumberInc__ is an application to auto-increment the build number of a C/C++ project
 
 ### Usage
 
@@ -34,3 +32,6 @@ namespace YourNamespace {
 
 #endif // VERSION_H
 ```
+### License
+
+BuildNumberInc is released under the [MIT License](https://opensource.org/licenses/MIT).
