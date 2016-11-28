@@ -4,34 +4,47 @@ __BuildNumberInc__ is an application to auto-increment the build number of a C/C
 
 ### Usage
 
-Add the executable to the pre-build step of your IDE.
-Pass as parameter the full name of the source file that should be analyzed.
+Add the executable and the arguments to the pre-build step of your IDE.
+
+If the build number is declared as a _#define_ no flags are needed.
+If the build number is declared as a _const_ use the __-c__ flag.
+If you want to see the changed build number add the __-v__ flag.
 
 ### Example
 
 #### Atollic TrueSTUDIO for ARM
 
-_project properties_ -> C/C++ Build -> Settings -> Build Steps -> Pre-build steps -> Command
+In _project properties_ -> C/C++ Build -> Settings -> Build Steps -> Pre-build steps -> Command
+
+for a _#define_ set:
 ```
-<path_to_BuildNumberInc.exe>\BuildNumberInc.exe <path_to_source_file>\version.h
+<path_to_BuildNumberInc.exe>\BuildNumberInc.exe -v <path_to_file>\version.h SW_VER_BUILD
+```
+for a _const_ set:
+```
+<path_to_BuildNumberInc.exe>\BuildNumberInc.exe -c -v <path_to_file>\version.h verBuildNo_0
 ```
 
-#### Version file
+#### Test file (version.h)
 
 ```cpp
 #ifndef VERSION_H
 #define VERSION_H
 
-namespace YourNamespace {
-
 #define SW_VER_MAJOR	1
 #define SW_VER_MINOR	8
 #define SW_VER_BUILD	28		// build number
+
+namespace YourNamespace {
+
+    const unsigned int verBuildNo_0 = 14; // a comment
+    const uint16_t verBuildNo_1 = 27; // another comment
 
 } // namespace
 
 #endif // VERSION_H
 ```
+
 ### License
 
 BuildNumberInc is released under the [MIT License](https://opensource.org/licenses/MIT).

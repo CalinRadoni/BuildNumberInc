@@ -2,18 +2,50 @@ package main
 
 import (
 	"bufio"
+	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
-func readAndProcessFile(fileName string) ([]string, error) {
+var newVersion int
+
+const verHi int = 1
+const verLo int = 1
+
+func GenericUsage(out io.Writer) {
+	fmt.Fprintf(out, "BuildNumberInc v.%d.%d, Copyright (c) 2016 Calin Radoni\n", verHi, verLo)
+	fmt.Fprintf(out, "https://github.com/CalinRadoni/BuildNumberInc\n")
+	fmt.Fprintf(out, "Released under the MIT License\n\n")
+	fmt.Fprintf(out, "Usage: ./%s [-c] [-v] [-h] <fileName> <tokenName>\n", filepath.Base(os.Args[0]))
+	fmt.Fprintf(out, "Flags:\n")
+	fmt.Fprintf(out, "  -c: search for a const otherways search for a #define\n")
+	fmt.Fprintf(out, "  -v: verbose output\n")
+	fmt.Fprintf(out, "  -h: help (this screen)\n")
+	fmt.Fprintf(out, "\nExamples:\n")
+	fmt.Fprintf(out, "  ./%s version.h SW_BUILD_NUMBER\n", filepath.Base(os.Args[0]))
+	fmt.Fprintf(out, "  ./%s -c -v version.h swBuildNumber\n\n", filepath.Base(os.Args[0]))
+}
+
+var Usage = func() {
+	GenericUsage(os.Stderr)
+}
+
+func readAndProcessFile(fileName string, fileToken string, searchForConst bool) ([]string, error) {
+	var matchString string
 	var line string
 	var content []string
 	var err error
 	var version int
+	var posToken int    ///< number of capture group for `fileToken`
+	var posTokenVal int ///< number of capture group for the value of `fileToken`
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -21,7 +53,23 @@ func readAndProcessFile(fileName string) ([]string, error) {
 	}
 	defer file.Close()
 
-	regMatch := regexp.MustCompile("^(\\s*)(#define)(\\s+)(SW_VER_BUILD)(\\s+)([0-9]+)(.*)$")
+	if searchForConst {
+		// ^(\s*)(const)(\s+\w+)(\s+\w+)*(\s+)(verBuild0)(\s)*(=)(\s)*([0-9]+)(.*)$
+		matchString = "^(\\s*)(const)(\\s+\\w+)(\\s+\\w+)*(\\s+)("
+		matchString += fileToken
+		matchString += ")(\\s)*(=)(\\s)*([0-9]+)(.*)$"
+		posToken = 6
+		posTokenVal = 10
+	} else {
+		// ^(\s*)(#define)(\s+)(TOKEN)(\s+)([0-9]+)(.*)$
+		matchString = "^(\\s*)(#define)(\\s+)("
+		matchString += fileToken
+		matchString += ")(\\s+)([0-9]+)(.*)$"
+		posToken = 4
+		posTokenVal = 6
+	}
+
+	regMatch := regexp.MustCompile(matchString)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line = scanner.Text()
@@ -31,12 +79,19 @@ func readAndProcessFile(fileName string) ([]string, error) {
 				if i == 0 {
 					line = ""
 				} else {
-					if i == 6 {
+					if i == posToken {
+						if fileToken != val {
+							err = errors.New("Application error ! Version not changed !")
+							return nil, err
+						}
+					}
+					if i == posTokenVal {
 						version, err = strconv.Atoi(val)
 						if err != nil {
 							return nil, err
 						}
-						line = line + strconv.Itoa(version+1)
+						newVersion = version + 1
+						line = line + strconv.Itoa(newVersion)
 					} else {
 						line = line + val
 					}
@@ -63,19 +118,59 @@ func writeResultInFile(content []string, fileName string) error {
 	return wr.Flush()
 }
 
+func StringHaveSpaces(data string) bool {
+	var pos int
+
+	checkFunc := func(ch rune) bool {
+		return unicode.IsSpace(ch)
+	}
+	pos = strings.IndexFunc(data, checkFunc)
+
+	return (pos != -1)
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("Source file name not specified !")
+	var searchForConst bool
+	var fileName string
+	var fileToken string
+	var flagVerbose bool
+	var flagHelp bool
+
+	flag.Usage = Usage
+	flag.BoolVar(&searchForConst, "c", false, "")
+	flag.BoolVar(&flagVerbose, "v", false, "")
+	flag.BoolVar(&flagHelp, "h", false, "")
+	flag.Parse()
+	if flag.NArg() != 2 {
+		flag.Usage()
+		return
 	}
 
-	fileName := os.Args[1]
+	if flagHelp {
+		GenericUsage(os.Stdout)
+		return
+	}
 
-	content, err := readAndProcessFile(fileName)
+	fileName = flag.Arg(0)
+
+	fileToken = flag.Arg(1)
+	if StringHaveSpaces(fileToken) {
+		fmt.Fprintf(os.Stderr, "No whitespace allowed in fileToken !\n")
+		return
+	}
+
+	newVersion = 0
+
+	content, err := readAndProcessFile(fileName, fileToken, searchForConst)
 	if err != nil {
 		log.Fatalf("Read error: %v", err)
 	}
 
 	if err = writeResultInFile(content, fileName); err != nil {
 		log.Fatalf("Write error: %v", err)
+	}
+
+	if flagVerbose {
+		fmt.Fprintf(os.Stdout, "BuildNumberInc: %s\\%s increased to %d\n", filepath.Base(fileName), fileToken, newVersion)
 	}
 }
