@@ -16,15 +16,16 @@ import (
 )
 
 var newVersion int
+var tokenFound bool
 
 const verHi int = 1
-const verLo int = 2
+const verLo int = 4
 
 func genericUsage(out io.Writer) {
 	fmt.Fprintf(out, "BuildNumberInc v.%d.%d, Copyright (c) 2016, 2017 Calin Radoni\n", verHi, verLo)
 	fmt.Fprintf(out, "https://github.com/CalinRadoni/BuildNumberInc\n")
 	fmt.Fprintf(out, "Released under the MIT License\n\n")
-	fmt.Fprintf(out, "Usage: ./%s [-c] [-v] [-h] <fileName> <tokenName>\n", filepath.Base(os.Args[0]))
+	fmt.Fprintf(out, "Usage: ./%s [-c] [-v] [-r] [-h] <fileName> <tokenName>\n", filepath.Base(os.Args[0]))
 	fmt.Fprintf(out, "Flags:\n")
 	fmt.Fprintf(out, "  -c: search for a const, not for a #define\n")
 	fmt.Fprintf(out, "  -v: verbose output\n")
@@ -93,6 +94,7 @@ func readAndProcessFile(fileName string, fileToken string, searchForConst bool) 
 						}
 						newVersion = version + 1
 						line = line + strconv.Itoa(newVersion)
+						tokenFound = true
 					} else {
 						line = line + val
 					}
@@ -167,17 +169,26 @@ func main() {
 	}
 
 	newVersion = 0
+	tokenFound = false
 
 	content, err := readAndProcessFile(fileName, fileToken, searchForConst)
 	if err != nil {
 		log.Fatalf("Error in reading and processing: %v.\n", err)
 	}
 
-	if err = writeResultInFile(content, fileName, flagEndR); err != nil {
+	if err = writeResultInFile(content, fileName, !flagEndR); err != nil {
 		log.Fatalf("Write error: %v", err)
 	}
 
 	if flagVerbose {
-		fmt.Fprintf(os.Stdout, "BuildNumberInc: %s\\%s increased to %d\n", filepath.Base(fileName), fileToken, newVersion)
+		if tokenFound {
+			fmt.Fprintf(os.Stdout, "BuildNumberInc: %s\\%s increased to %d\n", filepath.Base(fileName), fileToken, newVersion)
+		} else {
+			fmt.Fprintf(os.Stdout, "%s NOT found in %s !\n", fileToken, fileName)
+		}
+	} else {
+		if !tokenFound {
+			fmt.Fprintf(os.Stdout, "%s NOT found !\n", fileToken)
+		}
 	}
 }
