@@ -2,12 +2,13 @@
 
 __BuildNumberInc__ is an application to auto-increment the build number of a C/C++ project
 
-### Usage
+## Usage
 
 Add the executable and the arguments to the pre-build step of your IDE.
 
 If the build number is declared as a _#define_ no flags are needed.
 If the build number is declared as a _const_ use the __-c__ flag.
+If you want to use only LF (and not CRLF) as line endings in the source file use __-r__ flag.
 If you want to see the changed build number add the __-v__ flag.
 
 ### Example
@@ -45,6 +46,11 @@ namespace YourNamespace {
 #endif // VERSION_H
 ```
 
-### License
+## Building the package
 
-BuildNumberInc is released under the [MIT License](https://opensource.org/licenses/MIT).
+__BuildNumberInc__ is a simple package so, if you have [Go](https://golang.org/) installed and
+added to your path, just type `go build` in the source directory.
+
+## License
+
+__BuildNumberInc__ is released under the [MIT License](https://opensource.org/licenses/MIT).

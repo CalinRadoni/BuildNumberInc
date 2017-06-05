@@ -18,24 +18,25 @@ import (
 var newVersion int
 
 const verHi int = 1
-const verLo int = 1
+const verLo int = 2
 
-func GenericUsage(out io.Writer) {
-	fmt.Fprintf(out, "BuildNumberInc v.%d.%d, Copyright (c) 2016 Calin Radoni\n", verHi, verLo)
+func genericUsage(out io.Writer) {
+	fmt.Fprintf(out, "BuildNumberInc v.%d.%d, Copyright (c) 2016, 2017 Calin Radoni\n", verHi, verLo)
 	fmt.Fprintf(out, "https://github.com/CalinRadoni/BuildNumberInc\n")
 	fmt.Fprintf(out, "Released under the MIT License\n\n")
 	fmt.Fprintf(out, "Usage: ./%s [-c] [-v] [-h] <fileName> <tokenName>\n", filepath.Base(os.Args[0]))
 	fmt.Fprintf(out, "Flags:\n")
-	fmt.Fprintf(out, "  -c: search for a const otherways search for a #define\n")
+	fmt.Fprintf(out, "  -c: search for a const, not for a #define\n")
 	fmt.Fprintf(out, "  -v: verbose output\n")
+	fmt.Fprintf(out, "  -r: do not add CR to line end\n")
 	fmt.Fprintf(out, "  -h: help (this screen)\n")
 	fmt.Fprintf(out, "\nExamples:\n")
 	fmt.Fprintf(out, "  ./%s version.h SW_BUILD_NUMBER\n", filepath.Base(os.Args[0]))
 	fmt.Fprintf(out, "  ./%s -c -v version.h swBuildNumber\n\n", filepath.Base(os.Args[0]))
 }
 
-var Usage = func() {
-	GenericUsage(os.Stderr)
+var flagsUsage = func() {
+	genericUsage(os.Stderr)
 }
 
 func readAndProcessFile(fileName string, fileToken string, searchForConst bool) ([]string, error) {
@@ -81,7 +82,7 @@ func readAndProcessFile(fileName string, fileToken string, searchForConst bool) 
 				} else {
 					if i == posToken {
 						if fileToken != val {
-							err = errors.New("Application error ! Version not changed !")
+							err = errors.New("internal error ! Supplied file not changed")
 							return nil, err
 						}
 					}
@@ -104,7 +105,7 @@ func readAndProcessFile(fileName string, fileToken string, searchForConst bool) 
 	return content, scanner.Err()
 }
 
-func writeResultInFile(content []string, fileName string) error {
+func writeResultInFile(content []string, fileName string, addEndR bool) error {
 	file, err := os.Create(fileName)
 	if err != nil {
 		return err
@@ -113,12 +114,16 @@ func writeResultInFile(content []string, fileName string) error {
 
 	wr := bufio.NewWriter(file)
 	for _, line := range content {
-		fmt.Fprintln(wr, line)
+		if addEndR {
+			fmt.Fprintf(wr, "%s\r\n", line)
+		} else {
+			fmt.Fprintf(wr, "%s\n", line)
+		}
 	}
 	return wr.Flush()
 }
 
-func StringHaveSpaces(data string) bool {
+func stringHaveSpaces(data string) bool {
 	var pos int
 
 	checkFunc := func(ch rune) bool {
@@ -135,11 +140,13 @@ func main() {
 	var fileToken string
 	var flagVerbose bool
 	var flagHelp bool
+	var flagEndR bool
 
-	flag.Usage = Usage
+	flag.Usage = flagsUsage
 	flag.BoolVar(&searchForConst, "c", false, "")
 	flag.BoolVar(&flagVerbose, "v", false, "")
 	flag.BoolVar(&flagHelp, "h", false, "")
+	flag.BoolVar(&flagEndR, "r", false, "")
 	flag.Parse()
 	if flag.NArg() != 2 {
 		flag.Usage()
@@ -147,14 +154,14 @@ func main() {
 	}
 
 	if flagHelp {
-		GenericUsage(os.Stdout)
+		genericUsage(os.Stdout)
 		return
 	}
 
 	fileName = flag.Arg(0)
 
 	fileToken = flag.Arg(1)
-	if StringHaveSpaces(fileToken) {
+	if stringHaveSpaces(fileToken) {
 		fmt.Fprintf(os.Stderr, "No whitespace allowed in fileToken !\n")
 		return
 	}
@@ -163,10 +170,10 @@ func main() {
 
 	content, err := readAndProcessFile(fileName, fileToken, searchForConst)
 	if err != nil {
-		log.Fatalf("Read error: %v", err)
+		log.Fatalf("Error in reading and processing: %v.\n", err)
 	}
 
-	if err = writeResultInFile(content, fileName); err != nil {
+	if err = writeResultInFile(content, fileName, flagEndR); err != nil {
 		log.Fatalf("Write error: %v", err)
 	}
 
