@@ -2,6 +2,10 @@
 
 __BuildNumberInc__ is an application to auto-increment the build number of a C/C++ project
 
+## Note
+
+This repository is archived because I have no use for this application any more.
+
 ## Usage
 
 Add the executable and the arguments to the pre-build step of your IDE.
